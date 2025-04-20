@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracker 2025-2028</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #e4e4e4;
+            background-color: #0d1117;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .year-container {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 30px;
+            width: 100%;
+            align-items: center;
+        }
+
+        .year-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .days {
+            display: flex;
+            gap: 3px;
+            width: max-content;
+            margin: 0 auto;
+        }
+
+        .week {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .day {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            background-color: #161b22;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .day[data-level="0"] {
+            background-color: #161b22;
+        }
+
+        .day[data-level="1"] {
+            background-color: #0e4429;
+        }
+
+        .day[data-level="2"] {
+            background-color: #006d32;
+        }
+
+        .day[data-level="3"] {
+            background-color: #26a641;
+        }
+
+        .day[data-level="4"] {
+            background-color: #00ff88;
+        }
+
+        .day.current {
+            border: 2px solid #f78166;
+            box-sizing: border-box;
+        }
+
+        .day:hover {
+            transform: scale(1.3);
+            z-index: 10;
+        }
+
+        .day:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            background: #24292e;
+            color: #fff;
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 100;
+            margin-top: 20px;
+            white-space: pre;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: #8b949e;
+        }
+
+        .legend-box {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Tracker 2025-2028</h1>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-box" style="background-color: #161b22;"></div> Habits ❌ |
+        </div>
+        <div class="legend-item">
+            <div class="legend-box" style="background-color: #0e4429;"></div> Self Study : 1+ hrs | Habits ✅ |
+        </div>
+        <div class="legend-item">
+            <div class="legend-box" style="background-color: #006d32;"></div> Self Study : 2+ hrs | Habits ✅ |
+        </div>
+        <div class="legend-item">
+            <div class="legend-box" style="background-color: #26a641;"></div> Self Study : 3+ hrs | Habits ✅ |
+        </div>
+        <div class="legend-item">
+            <div class="legend-box" style="background-color: #00ff88;"></div> Self Study : 4+ hrs | Habits ✅
+        </div>
+    </div>
+
+    <div class="container" id="tracker-container"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const years = [2025, 2026, 2027, 2028];
+            const container = document.getElementById('tracker-container');
+
+            let studyData;
+            try {
+                studyData = JSON.parse(localStorage.getItem('studyData')) || {};
+                // Migrate old data format
+                for (const year in studyData) {
+                    for (const date in studyData[year]) {
+                        if (typeof studyData[year][date] === 'number') {
+                            studyData[year][date] = {
+                                hours: studyData[year][date],
+                                wake5: false,
+                                run5: false,
+                                sleep10: false,
+                                water5: false
+                            };
+                        }
+                    }
+                }
+            } catch (e) {
+                studyData = {};
+            }
+
+            years.forEach(year => {
+                if (!studyData[year]) studyData[year] = {};
+
+                const yearContainer = document.createElement('div');
+                yearContainer.className = 'year-container';
+                yearContainer.innerHTML = `<div class="year-title">${year}</div>`;
+
+                const daysContainer = document.createElement('div');
+                daysContainer.className = 'days';
+
+                let currentDate = new Date(year, 0, 1);
+                while (currentDate.getDay() !== 0) currentDate.setDate(currentDate.getDate() - 1);
+                const lastDay = new Date(year, 11, 31);
+
+                while (currentDate <= lastDay) {
+                    const week = document.createElement('div');
+                    week.className = 'week';
+
+                    for (let i = 0; i < 7; i++) {
+                        const day = document.createElement('div');
+                        day.className = 'day';
+
+                        if (currentDate.getFullYear() === year) {
+                            const dateStr = formatDate(currentDate);
+                            const data = studyData[year][dateStr] || {
+                                hours: 0,
+                                wake5: false,
+                                run5: false,
+                                sleep10: false,
+                                water5: false
+                            };
+
+                            day.dataset.date = dateStr;
+                            day.dataset.hours = data.hours;
+                            day.dataset.level = getLevel(data);
+                            day.dataset.tooltip = `Date: ${dateStr}\n` +  // Added date here
+                                `Self Study : ${data.hours.toFixed(1)} hours\n` +
+                                `Wake up at 5:00 AM : ${data.wake5 ? '✔' : '✖'}\n` +
+                                `Run 5 rounds right after waking up : ${data.run5 ? '✔' : '✖'}\n` +
+                                `Sleep at 10:00 PM : ${data.sleep10 ? '✔' : '✖'}\n` +
+                                `Drink 5 bottles of water : ${data.water5 ? '✔' : '✖'}`;
+
+                            if (isSameDay(currentDate, new Date())) {
+                                day.classList.add('current');
+                            }
+
+                            day.addEventListener('click', function () {
+                                const input = prompt(
+                                    `Enter data for ${dateStr}:\nFormat: hours,wake5(Y/N),run5(Y/N),sleep10(Y/N),water5(Y/N)\nExample: 4,Y,Y,Y,Y`,
+                                    `${data.hours},${data.wake5 ? 'Y' : 'N'},${data.run5 ? 'Y' : 'N'},${data.sleep10 ? 'Y' : 'N'},${data.water5 ? 'Y' : 'N'}`
+                                );
+
+                                if (input !== null) {
+                                    const parts = input.split(',');
+                                    if (parts.length === 5) {
+                                        const hours = parseFloat(parts[0]);
+                                        const wake5 = parts[1].trim().toUpperCase() === 'Y';
+                                        const run5 = parts[2].trim().toUpperCase() === 'Y';
+                                        const sleep10 = parts[3].trim().toUpperCase() === 'Y';
+                                        const water5 = parts[4].trim().toUpperCase() === 'Y';
+
+                                        if (!isNaN(hours)) {
+                                            studyData[year][dateStr] = { hours, wake5, run5, sleep10, water5 };
+                                            localStorage.setItem('studyData', JSON.stringify(studyData));
+                                            day.dataset.hours = hours;
+                                            day.dataset.level = getLevel({ hours, wake5, run5, sleep10, water5 });
+                                            day.dataset.tooltip = `Date: ${day.dataset.date}\n` +  // Added date here
+                                                `Self Study : ${hours.toFixed(1)} hours\n` +
+                                                `Wake up at 5:00 AM : ${wake5 ? '✔' : '✖'}\n` +
+                                                `Run 5 rounds right after waking up : ${run5 ? '✔' : '✖'}\n` +
+                                                `Sleep at 10:00 PM : ${sleep10 ? '✔' : '✖'}\n` +
+                                                `Drink 5 bottles of water : ${water5 ? '✔' : '✖'}`;
+                                        }
+                                    }
+                                }
+                            });
+                        } else {
+                            day.style.visibility = 'hidden';
+                        }
+
+                        week.appendChild(day);
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                    daysContainer.appendChild(week);
+                }
+                yearContainer.appendChild(daysContainer);
+                container.appendChild(yearContainer);
+            });
+
+            function formatDate(date) {
+                return [
+                    String(date.getDate()).padStart(2, '0'),
+                    String(date.getMonth() + 1).padStart(2, '0'),
+                    date.getFullYear()
+                ].join('/');
+            }
+
+            function isSameDay(d1, d2) {
+                return d1.getDate() === d2.getDate() &&
+                    d1.getMonth() === d2.getMonth() &&
+                    d1.getFullYear() === d2.getFullYear();
+            }
+
+            function getLevel(data) {
+                const { hours, wake5, run5, sleep10, water5 } = data;
+                const habitsMet = wake5 && run5 && sleep10 && water5;
+
+                if (!habitsMet) return '0';
+                return hours >= 4 ? '4' :
+                    hours >= 3 ? '3' :
+                        hours >= 2 ? '2' :
+                            hours >= 1 ? '1' : '0';
+            }
+        });
+    </script>
+</body>
+
+</html>
